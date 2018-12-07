@@ -30,11 +30,11 @@ services:
       - monitor-net
     labels:
       org.label-schema.group: "monitoring"
-  
+
   alertmanager:
     image: prom/alertmanager:v0.15.3
     container_name: alertmanager
-    volumes: 
+    volumes:
       - ./alertmanager/:/etc/alertmanager/
     command:
       - '--config.file=/etc/alertmanager/config.yml'
@@ -84,7 +84,7 @@ services:
       - monitor-net
     labels:
       org.label-schema.group: "monitoring"
-  
+
   grafana:
     image: grafana/grafana:5.4.0
     container_name: grafana
@@ -95,8 +95,8 @@ services:
       - ./grafana/setup.sh:/setup.sh
     entrypoint: /setup.sh
     environment:
-      - GF_SECURITY_ADMIN_USER=${ADMIN_USER:-admin}
-      - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_USERS_ALLOW_SIGN_UP=false
     restart: unless-stopped
     expose:
@@ -117,6 +117,58 @@ services:
     labels:
       org.label-schema.group: "monitoring"
 
+  elasticsearch:
+    image: nathanleclaire/elasticsearch:43d2b4f914a192d0de221cb744dab665b07f1268
+    container_name: elasticsearch
+    networks:
+      - monitor-net
+    labels:
+      org.label-schema.group: "monitoring"
+    expose:
+      - 9200
+      - 9300
+
+  logstash:
+    environment:
+      LOGSPOUT: ignore
+    image: nathanleclaire/logstash:43d2b4f914a192d0de221cb744dab665b07f1268
+    links:
+      - elasticsearch:elasticsearch
+    command: -f /etc/logstash.sample.conf
+    container_name: logstash
+    networks:
+      - monitor-net
+    labels:
+      org.label-schema.group: "monitoring"
+    expose:
+      - 5000
+
+  kibana:
+    image: nathanleclaire/kibana:43d2b4f914a192d0de221cb744dab665b07f1268
+    container_name: kibana
+    networks:
+      - monitor-net
+    labels:
+      org.label-schema.group: "monitoring"
+    expose:
+      - 80
+
+  logspout:
+    net: container:logstash
+    environment:
+      DEBUG: "true"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: syslog://localhost:5000
+    image: nathanleclaire/logspout:43d2b4f914a192d0de221cb744dab665b07f1268
+    container_name: logspout
+    networks:
+      - monitor-net
+    labels:
+      org.label-schema.group: "monitoring"
+    expose:
+      - 8000
+
   caddy:
     image: stefanprodan/caddy
     container_name: caddy
@@ -125,11 +177,16 @@ services:
       - "9090:9090"
       - "9093:9093"
       - "9091:9091"
+      - "9300:9300"
+      - "9200:9200"
+      - "80:80"
+      - "8000:8000"
+      - "5000:5000"
     volumes:
       - ./caddy/:/etc/caddy/
     environment:
-      - ADMIN_USER=${ADMIN_USER:-admin}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+      - ADMIN_USER=admin
+      - ADMIN_PASSWORD=admin
     restart: unless-stopped
     networks:
       - monitor-net

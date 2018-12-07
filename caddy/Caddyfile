@@ -37,3 +37,58 @@
     errors stderr
     tls off
 }
+
+:80 {
+    basicauth / {$ADMIN_USER} {$ADMIN_PASSWORD}
+    proxy / kibana:80 {
+            transparent
+            websocket
+        }
+    errors stderr
+    tls off
+}
+
+:8000 {
+    basicauth / {$ADMIN_USER} {$ADMIN_PASSWORD}
+    proxy / logspout:8000 {
+            transparent
+        }
+    errors stderr
+    tls off
+}
+
+:9200 {
+    basicauth / {$ADMIN_USER} {$ADMIN_PASSWORD}
+    proxy / elasticsearch:9200 {
+            transparent
+        }
+    errors stderr
+    tls off
+}
+
+:9300 {
+    basicauth / {$ADMIN_USER} {$ADMIN_PASSWORD}
+    proxy / elasticsearch:9300 {
+            transparent
+        }
+    errors stderr
+    tls off
+}
+
+:5000 {
+    basicauth / {$ADMIN_USER} {$ADMIN_PASSWORD}
+    proxy / logstash:5000 {
+            transparent
+        }
+    errors stderr
+    tls off
+}
+
+:8080 {
+    basicauth / {$ADMIN_USER} {$ADMIN_PASSWORD}
+    proxy / cadvisor:8080 {
+            transparent
+        }
+    errors stderr
+    tls off
+}
